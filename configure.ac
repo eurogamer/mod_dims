@@ -16,20 +16,20 @@ AC_PROG_CC
 AC_PROG_LIBTOOL
 
 # Check for ImageMagic
-AC_ARG_WITH(imagemagick, [  --with-imagemagick        Specify installation directory for ImageMagick library], [
-    imagemagick_dir=$with_imagemagick
-    LDFLAGS+=" -L$imagemagick_dir/lib"
-    CFLAGS+=" -I$imagemagick_dir/include/ImageMagick"
+AC_ARG_WITH(graphicsmagick, [  --with-graphicsmagick        Specify installation directory for GraphicsMagick library], [
+    graphicsmagick_dir=$with_graphicsmagick
+    LDFLAGS+=" -L$graphicsmagick_dir/lib"
+    CFLAGS+=" -I$graphicsmagick_dir/include/GraphicsMagick"
 ],[
-    CFLAGS+=" -I/usr/local/include/ImageMagick"
-    CFLAGS+=" -I/opt/local/include/ImageMagick"
+    CFLAGS+=" -I/usr/local/include/GraphicsMagick"
+    CFLAGS+=" -I/opt/local/include/GraphicsMagick"
 ])
-AC_SUBST(imagemagick_dir)
+AC_SUBST(graphicsmagick_dir)
 
 AC_CHECK_LIB(MagickWand, MagickWandGenesis,, [
-    AC_CHECK_LIB(Wand, MagickWandGenesis,, [AC_MSG_ERROR(ImageMagick not found.)])
+    AC_CHECK_LIB(Wand, MagickWandGenesis,, [AC_MSG_ERROR(GraphicsMagick not found.)])
 ])
-AC_CHECK_HEADER(wand/magick-wand.h)
+AC_CHECK_HEADER(wand/magick_wand.h)
 
 # Check for libcurl
 AC_ARG_WITH(curl, [  --with-curl        Specify installation directory for Curl library], [

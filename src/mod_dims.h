@@ -87,7 +87,7 @@ dims_operation_func
 
 struct dims_config_rec {
     int download_timeout;
-    int imagemagick_timeout;
+    int graphicsmagick_timeout;
 
     apr_table_t *whitelist;
     apr_hash_t *clients;
@@ -165,7 +165,7 @@ struct dims_request_rec {
     /* Time this request started.  Used for statistics. */
     apr_time_t start_time;
     apr_time_t download_time;
-    apr_time_t imagemagick_time;
+    apr_time_t graphicsmagick_time;
     
     /* Use a whitelist, or use a secret key passed on the URI */
     int use_secret_key;

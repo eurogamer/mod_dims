@@ -12,7 +12,7 @@
  *     dims_handle_request - validates against whitelist, client list and loads image.
  *       \
  *        dims_process_image - parses operations (resize, etc) and executes them
- *          \                  using imagemagick api. 
+ *          \                  using graphicsmagick api. 
  *           dims_send_image - sends image to connection w/appropriate headers
  *
  * Any errors during processing will call 'dims_cleanup' which will free
@@ -80,7 +80,7 @@ typedef struct {
     apr_uint32_t success_count;
     apr_uint32_t failure_count;
     apr_uint32_t download_timeout_count;
-    apr_uint32_t imagemagick_timeout_count;
+    apr_uint32_t graphicsmagick_timeout_count;
 } dims_stats_rec;
 
 dims_stats_rec *stats;
@@ -97,7 +97,7 @@ dims_create_config(apr_pool_t *p, server_rec *s)
     config->clients = apr_hash_make(p);
 
     config->download_timeout = 3000;
-    config->imagemagick_timeout = 3000;
+    config->graphicsmagick_timeout = 3000;
 
     config->no_image_url = NULL;
     config->no_image_expire = 60;
@@ -175,11 +175,11 @@ dims_config_set_download_timeout(cmd_parms *cmd, void *dummy, const char *arg)
 }
 
 static const char *
-dims_config_set_imagemagick_timeout(cmd_parms *cmd, void *dummy, const char *arg)
+dims_config_set_graphicsmagick_timeout(cmd_parms *cmd, void *dummy, const char *arg)
 {
     dims_config_rec *config = (dims_config_rec *) ap_get_module_config(
             cmd->server->module_config, &dims_module);
-    config->imagemagick_timeout = atol(arg);
+    config->graphicsmagick_timeout = atol(arg);
     return NULL;
 }
 
@@ -285,7 +285,7 @@ dims_config_set_no_image_url(cmd_parms *cmd, void *dummy, const char *arg)
 }
 
 static const char *
-dims_config_set_imagemagick_disk_size(cmd_parms *cmd, void *dummy, const char *arg)
+dims_config_set_graphicsmagick_disk_size(cmd_parms *cmd, void *dummy, const char *arg)
 {
     dims_config_rec *config = (dims_config_rec *) ap_get_module_config(
             cmd->server->module_config, &dims_module);
@@ -302,7 +302,7 @@ dims_config_set_secretkeyExpiryPeriod(cmd_parms *cmd, void *dummy, const char *a
     return NULL;
 }
 static const char *
-dims_config_set_imagemagick_area_size(cmd_parms *cmd, void *dummy, const char *arg)
+dims_config_set_graphicsmagick_area_size(cmd_parms *cmd, void *dummy, const char *arg)
 {
     dims_config_rec *config = (dims_config_rec *) ap_get_module_config(
             cmd->server->module_config, &dims_module);
@@ -311,7 +311,7 @@ dims_config_set_imagemagick_area_size(cmd_parms *cmd, void *dummy, const char *a
 }
 
 static const char *
-dims_config_set_imagemagick_map_size(cmd_parms *cmd, void *dummy, const char *arg)
+dims_config_set_graphicsmagick_map_size(cmd_parms *cmd, void *dummy, const char *arg)
 {
     dims_config_rec *config = (dims_config_rec *) ap_get_module_config(
             cmd->server->module_config, &dims_module);
@@ -320,7 +320,7 @@ dims_config_set_imagemagick_map_size(cmd_parms *cmd, void *dummy, const char *ar
 }
 
 static const char *
-dims_config_set_imagemagick_memory_size(cmd_parms *cmd, void *dummy, const char *arg)
+dims_config_set_graphicsmagick_memory_size(cmd_parms *cmd, void *dummy, const char *arg)
 {
     dims_config_rec *config = (dims_config_rec *) ap_get_module_config(
             cmd->server->module_config, &dims_module);
@@ -411,10 +411,10 @@ dims_write_header_cb(void *ptr, size_t size, size_t nmemb, void *data)
  * operations.  How often it's called is dependent on the operation 
  * being performed but in general it's called enough that timeout
  * resolution is close enough.  For instance this won't be called if 
- * ImageMagick is busy loading up the pixel cache.
+ * GraphicsMagick is busy loading up the pixel cache.
  */
 MagickBooleanType 
-dims_imagemagick_progress_cb(const char *text, const MagickOffsetType offset,
+dims_graphicsmagick_progress_cb(const char *text, const MagickOffsetType offset,
                              const MagickSizeType span, void *client_data)
 {
     dims_progress_rec *p = (dims_progress_rec *) client_data;
@@ -423,14 +423,14 @@ dims_imagemagick_progress_cb(const char *text, const MagickOffsetType offset,
     apr_time_t diff = (apr_time_now() - p->start_time) / 1000;
     //long complete = (long) 100L * (offset / (span - 1));
 
-    if(diff > p->d->config->imagemagick_timeout) {
+    if(diff > p->d->config->graphicsmagick_timeout) {
         p->d->status = DIMS_IMAGEMAGICK_TIMEOUT;
         ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, p->d->r, 
                 "Imagemagick operation, '%s', "
                 "timed out after %d ms. "
                 "(max: %d), on request: %s",
                 text, (int) diff, 
-                (int) p->d->config->imagemagick_timeout,
+                (int) p->d->config->graphicsmagick_timeout,
                 p->d->r->uri);
         return MagickFalse;
     }
@@ -507,7 +507,7 @@ dims_fetch_remote_image(dims_request_rec *d, const char *url)
                     "on request: %s ", filename, d->r->uri);
             return 1;
         }
-        d->imagemagick_time += (apr_time_now() - start_time) / 1000;
+        d->graphicsmagick_time += (apr_time_now() - start_time) / 1000;
     } else {
         /* Allow for some extra time to download the NOIMAGE image. */
         void *s = NULL;
@@ -597,14 +597,14 @@ dims_fetch_remote_image(dims_request_rec *d, const char *url)
             } 
 
             ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, d->r, 
-                    "ImageMagick error, '%s', on request: %s ", 
+                    "GraphicsMagick error, '%s', on request: %s ", 
                     MagickGetException(d->wand, &et), d->r->uri);
 
             free(fetch_url);
 
             return 1;
         }
-        d->imagemagick_time += (apr_time_now() - start_time) / 1000;
+        d->graphicsmagick_time += (apr_time_now() - start_time) / 1000;
 
         if(image_data.data) {
             free(image_data.data);
@@ -648,7 +648,7 @@ dims_send_image(dims_request_rec *d)
 
     start_time = apr_time_now();
     blob = MagickGetImageBlob(d->wand, &length);
-    d->imagemagick_time += (apr_time_now() - start_time) / 1000;
+    d->graphicsmagick_time += (apr_time_now() - start_time) / 1000;
 
     /* Set the Content-Type based on the image format. */
     content_type = apr_psprintf(d->pool, "image/%s", format);
@@ -776,7 +776,7 @@ dims_send_image(dims_request_rec *d)
     if(d->status == DIMS_DOWNLOAD_TIMEOUT) {
         apr_atomic_inc32(&stats->download_timeout_count);
     } else if(d->status == DIMS_IMAGEMAGICK_TIMEOUT) {
-        apr_atomic_inc32(&stats->imagemagick_timeout_count);
+        apr_atomic_inc32(&stats->graphicsmagick_timeout_count);
     }
 
     /* Record metrics for logging. */
@@ -794,7 +794,7 @@ dims_send_image(dims_request_rec *d)
 
     if(d->status != DIMS_DOWNLOAD_TIMEOUT && 
             d->status != DIMS_IMAGEMAGICK_TIMEOUT) {
-        snprintf(buf, 128, "%lld", d->imagemagick_time);
+        snprintf(buf, 128, "%lld", d->graphicsmagick_time);
         apr_table_set(d->r->notes, "DIMS_IM_TIME", buf);
     }
 
@@ -924,7 +924,7 @@ dims_process_image(dims_request_rec *d)
     /* Setting the progress monitor from the MagickWand API does not
      * seem to work.  The monitor never gets called.
      */
-    SetImageProgressMonitor(GetImageFromMagickWand(d->wand), dims_imagemagick_progress_cb, 
+    SetImageProgressMonitor(GetImageFromMagickWand(d->wand), dims_graphicsmagick_progress_cb, 
             (void *) progress_rec);
 
     int exc_strip_cmd = 0;
@@ -1017,7 +1017,7 @@ dims_process_image(dims_request_rec *d)
         }        
     }
 
-    d->imagemagick_time += (apr_time_now() - start_time) / 1000;
+    d->graphicsmagick_time += (apr_time_now() - start_time) / 1000;
 
     /* Disable timeouts at this point since the only thing left
      * to do is save the image. 
@@ -1108,7 +1108,7 @@ dims_handle_request(dims_request_rec *d)
 
         start_time = apr_time_now();
         MAGICK_CHECK(MagickReadImage(d->wand, d->filename), d);
-        d->imagemagick_time += (apr_time_now() - start_time) / 1000;
+        d->graphicsmagick_time += (apr_time_now() - start_time) / 1000;
 
         return dims_process_image(d);
     } else if(d->image_url || d->no_image_url) {
@@ -1240,7 +1240,7 @@ dims_handler(request_rec *r)
     d->status = APR_SUCCESS;
     d->start_time = apr_time_now();
     d->download_time = 0;
-    d->imagemagick_time = 0;
+    d->graphicsmagick_time = 0;
     d->use_secret_key=0;
 
     /* Set initial notes to be logged by mod_log_config. */
@@ -1410,7 +1410,7 @@ dims_handler(request_rec *r)
                 "%A, %d-%b-%Y %H:%M:%S %Z", 0));
 
         ap_rprintf(r, "\nmod_dims version: %s (%s)\n", MODULE_VERSION, MODULE_RELEASE);
-        ap_rprintf(r, "ImageMagick version: %s\n", GetMagickVersion(NULL));
+        ap_rprintf(r, "GraphicsMagick version: %s\n", GetMagickVersion(NULL));
         ap_rprintf(r, "libcurl version: %s\n", curl_version());
 
         ap_rprintf(r, "\nDetails\n-------\n");
@@ -1422,7 +1422,7 @@ dims_handler(request_rec *r)
         ap_rprintf(r, "Download timeouts: %d\n", 
                 apr_atomic_read32(&stats->download_timeout_count));
         ap_rprintf(r, "Imagemagick Timeouts: %d\n", 
-                apr_atomic_read32(&stats->imagemagick_timeout_count));
+                apr_atomic_read32(&stats->graphicsmagick_timeout_count));
 
         ap_rflush(r);
         return OK;
@@ -1542,7 +1542,7 @@ dims_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t* ptemp, server_rec *s)
     stats->success_count = 1;
     stats->failure_count = 0;
     stats->download_timeout_count = 0;
-    stats->imagemagick_timeout_count = 0;
+    stats->graphicsmagick_timeout_count = 0;
 
     return OK;
 }
@@ -1654,23 +1654,23 @@ static const command_rec dims_commands[] =
                   "Timeout for downloading remote images."
                   "The default is 3000."),
     AP_INIT_TAKE1("DimsImagemagickTimeout",
-                  dims_config_set_imagemagick_timeout, NULL, RSRC_CONF,
+                  dims_config_set_graphicsmagick_timeout, NULL, RSRC_CONF,
                   "Timeout for processing images."
                   "The default is 3000."),
     AP_INIT_TAKE1("DimsImagemagickMemorySize",
-                  dims_config_set_imagemagick_memory_size, NULL, RSRC_CONF,
+                  dims_config_set_graphicsmagick_memory_size, NULL, RSRC_CONF,
                   "Maximum amount of memory in megabytes to use for pixel cache."
                   "The default is 512mb."),
     AP_INIT_TAKE1("DimsImagemagickAreaSize",
-                  dims_config_set_imagemagick_area_size, NULL, RSRC_CONF,
+                  dims_config_set_graphicsmagick_area_size, NULL, RSRC_CONF,
                   "Maximum amount of memory in megabytes that any one image can use."
                   "The default is 128mb."),
     AP_INIT_TAKE1("DimsImagemagickMapSize",
-                  dims_config_set_imagemagick_map_size, NULL, RSRC_CONF,
+                  dims_config_set_graphicsmagick_map_size, NULL, RSRC_CONF,
                   "Maximum amount of memory map in megabytes to use for the pixel cache."
                   "The default is 1024mb."),
     AP_INIT_TAKE1("DimsImagemagickDiskSize",
-                  dims_config_set_imagemagick_disk_size, NULL, RSRC_CONF,
+                  dims_config_set_graphicsmagick_disk_size, NULL, RSRC_CONF,
                   "Maximum amount of disk space in megabytes to use for the pixel cache."
                   "The default is 1024mb."),
     AP_INIT_TAKE1("DimsSecretMaxExpiryPeriod",
