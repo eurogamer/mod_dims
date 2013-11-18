@@ -323,7 +323,7 @@ int main(int argc, char **argv) {
     }
 
     /* read from file */
-    MagickWandGenesis();
+    InitializeMagick( NULL );
     BENCHMARK("open",
         wand = NewMagickWand();
         if(MagickReadImage(wand, argv[1]) == MagickFalse) ThrowWandException(wand);

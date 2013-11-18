@@ -30,7 +30,7 @@
 #include <http_log.h>
 #include <http_protocol.h>
 
-#include <wand/magick-wand.h>
+#include <wand/magick_wand.h>
 
 #define LEGACY_DIMS_RESIZE 1
 #define LEGACY_DIMS_REFORMAT 2
@@ -65,25 +65,23 @@ dims_operation_func
     dims_flop_operation,
     dims_mirroredfloor_operation,
     dims_resize_operation,
-    dims_liquid_resize_operation,
-    dims_adaptive_resize_operation,
+//    dims_liquid_resize_operation,
+//    dims_adaptive_resize_operation,
     dims_crop_operation,
     dims_thumbnail_operation,
     dims_sharpen_operation,
     dims_blur_operation,
     dims_quality_operation,
     dims_format_operation,
-    dims_legacy_thumbnail_operation,
     dims_smart_crop_operation,
     dims_brightness_operation,
 	dims_modulate_operation,
     dims_flipflop_operation,
-    dims_sepia_operation,
+//    dims_sepia_operation,
     dims_grayscale_operation,
     dims_autolevel_operation,
     dims_rotate_operation,
-    dims_invert_operation,
-    dims_legacy_crop_operation;
+    dims_invert_operation;
 
 struct dims_config_rec {
     int download_timeout;

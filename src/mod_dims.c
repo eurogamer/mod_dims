@@ -413,7 +413,7 @@ dims_write_header_cb(void *ptr, size_t size, size_t nmemb, void *data)
  * resolution is close enough.  For instance this won't be called if 
  * GraphicsMagick is busy loading up the pixel cache.
  */
-MagickBooleanType 
+MagickBool 
 dims_graphicsmagick_progress_cb(const char *text, const MagickOffsetType offset,
                              const MagickSizeType span, void *client_data)
 {
@@ -879,7 +879,8 @@ dims_set_optimal_geometry(dims_request_rec *d)
             strcmp(command, "thumbnail") == 0) {
             char *args = ap_getword(d->pool, &cmds, '/');
 
-            flags = ParseAbsoluteGeometry(args, &rec);
+            flags = GetGeometry(args, &rec->x, &rec->y, &rec->width, &rec->height);
+
             if(flags & WidthValue && flags & HeightValue && !(flags & PercentValue)) {
                 MagickSetSize(d->wand, rec.width, rec.height);
                 return;
@@ -924,8 +925,7 @@ dims_process_image(dims_request_rec *d)
     /* Setting the progress monitor from the MagickWand API does not
      * seem to work.  The monitor never gets called.
      */
-    SetImageProgressMonitor(GetImageFromMagickWand(d->wand), dims_graphicsmagick_progress_cb, 
-            (void *) progress_rec);
+    SetMonitorHandler(dims_graphicsmagick_progress_cb);
 
     int exc_strip_cmd = 0;
 
@@ -958,7 +958,7 @@ dims_process_image(dims_request_rec *d)
                 MagickStatusType flags;
                 RectangleInfo rec;
 
-                flags = ParseAbsoluteGeometry(args, &rec);
+                flags = GetGeometry(args, &rec->x, &rec->y, &rec->width, &rec->height);
 
                 if(rec.width > 0 && rec.height == 0) {
                     args = apr_psprintf(d->pool, "%ld", rec.width);
@@ -1022,7 +1022,7 @@ dims_process_image(dims_request_rec *d)
     /* Disable timeouts at this point since the only thing left
      * to do is save the image. 
      */
-    SetImageProgressMonitor(GetImageFromMagickWand(d->wand), NULL, NULL);
+    SetMonitorHandler(NULL);
 
     return dims_send_image(d);
 }
@@ -1454,7 +1454,7 @@ dims_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t* ptemp, server_rec *s)
     apr_status_t status;
     apr_size_t retsize;
 
-    MagickWandGenesis();
+    InitializeMagick( NULL );
     curl_global_init(CURL_GLOBAL_ALL);
 
     ap_add_version_component(p, "mod_dims/" MODULE_VERSION);
@@ -1470,13 +1470,11 @@ dims_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t* ptemp, server_rec *s)
     apr_hash_set(ops, "flip", APR_HASH_KEY_STRING, dims_flip_operation);
     apr_hash_set(ops, "flop", APR_HASH_KEY_STRING, dims_flop_operation);
     apr_hash_set(ops, "mirroredfloor", APR_HASH_KEY_STRING, dims_mirroredfloor_operation);
-    apr_hash_set(ops, "liquidresize", APR_HASH_KEY_STRING, dims_liquid_resize_operation);
+//    apr_hash_set(ops, "liquidresize", APR_HASH_KEY_STRING, dims_liquid_resize_operation);
     apr_hash_set(ops, "resize", APR_HASH_KEY_STRING, dims_resize_operation);
-    apr_hash_set(ops, "adaptiveresize", APR_HASH_KEY_STRING, dims_adaptive_resize_operation);
+//    apr_hash_set(ops, "adaptiveresize", APR_HASH_KEY_STRING, dims_adaptive_resize_operation);
     apr_hash_set(ops, "crop", APR_HASH_KEY_STRING, dims_crop_operation);
     apr_hash_set(ops, "thumbnail", APR_HASH_KEY_STRING, dims_thumbnail_operation);
-    apr_hash_set(ops, "legacy_thumbnail", APR_HASH_KEY_STRING, dims_legacy_thumbnail_operation);
-    apr_hash_set(ops, "legacy_crop", APR_HASH_KEY_STRING, dims_legacy_crop_operation);
     apr_hash_set(ops, "quality", APR_HASH_KEY_STRING, dims_quality_operation);
     apr_hash_set(ops, "sharpen", APR_HASH_KEY_STRING, dims_sharpen_operation);
     apr_hash_set(ops, "blur", APR_HASH_KEY_STRING, dims_blur_operation);
@@ -1484,7 +1482,7 @@ dims_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t* ptemp, server_rec *s)
     apr_hash_set(ops, "brightness", APR_HASH_KEY_STRING, dims_brightness_operation);
     apr_hash_set(ops, "modulate", APR_HASH_KEY_STRING, dims_modulate_operation);
     apr_hash_set(ops, "flipflop", APR_HASH_KEY_STRING, dims_flipflop_operation);
-    apr_hash_set(ops, "sepia", APR_HASH_KEY_STRING, dims_sepia_operation);
+//    apr_hash_set(ops, "sepia", APR_HASH_KEY_STRING, dims_sepia_operation);
     apr_hash_set(ops, "grayscale", APR_HASH_KEY_STRING, dims_grayscale_operation);
     apr_hash_set(ops, "autolevel", APR_HASH_KEY_STRING, dims_autolevel_operation);
     apr_hash_set(ops, "rotate", APR_HASH_KEY_STRING, dims_rotate_operation);
