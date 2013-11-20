@@ -647,7 +647,7 @@ dims_send_image(dims_request_rec *d)
     format = MagickGetImageFormat(d->wand);
 
     start_time = apr_time_now();
-    blob = MagickGetImageBlob(d->wand, &length);
+    blob = MagickWriteImageBlob(d->wand, &length);
     d->graphicsmagick_time += (apr_time_now() - start_time) / 1000;
 
     /* Set the Content-Type based on the image format. */
@@ -879,7 +879,7 @@ dims_set_optimal_geometry(dims_request_rec *d)
             strcmp(command, "thumbnail") == 0) {
             char *args = ap_getword(d->pool, &cmds, '/');
 
-            flags = GetGeometry(args, &rec->x, &rec->y, &rec->width, &rec->height);
+            flags = GetGeometry(args, &rec.x, &rec.y, &rec.width, &rec.height);
 
             if(flags & WidthValue && flags & HeightValue && !(flags & PercentValue)) {
                 MagickSetSize(d->wand, rec.width, rec.height);
@@ -917,27 +917,28 @@ dims_process_image(dims_request_rec *d)
     /* Hook in the progress monitor.  It gets passed a 
      * dims_progress_rec which keeps track of the start time.
      */
-    dims_progress_rec *progress_rec = (dims_progress_rec *) apr_palloc(
-            d->pool, sizeof(dims_progress_rec));
-    progress_rec->d = d;
-    progress_rec->start_time = apr_time_now();
+    //dims_progress_rec *progress_rec = (dims_progress_rec *) apr_palloc(
+    //        d->pool, sizeof(dims_progress_rec));
+    //progress_rec->d = d;
+    //progress_rec->start_time = apr_time_now();
 
     /* Setting the progress monitor from the MagickWand API does not
      * seem to work.  The monitor never gets called.
      */
-    SetMonitorHandler(dims_graphicsmagick_progress_cb);
+    //SetMonitorHandler(dims_graphicsmagick_progress_cb);
 
     int exc_strip_cmd = 0;
 
     /* Convert image to RGB from CMYK. */
     if(MagickGetImageColorspace(d->wand) == CMYKColorspace) {
-        size_t number_profiles;
+        MagickSetImageColorspace(d->wand, RGBColorspace);
+        //size_t number_profiles;
 
-        char *profiles = MagickGetImageProfiles(d->wand, "icc", &number_profiles);
-        if (number_profiles == 0) {
-            MagickProfileImage(d->wand, "ICC", cmyk_icc, sizeof(cmyk_icc));
-        }
-        MagickProfileImage(d->wand, "ICC", rgb_icc, sizeof(rgb_icc));
+        //char *profiles = MagickGetImageProfiles(d->wand, "icc", &number_profiles);
+        //if (number_profiles == 0) {
+        //    MagickSetImageProfile(d->wand, "ICC", cmyk_icc, sizeof(cmyk_icc));
+        //}
+        //MagickProfileImage(d->wand, "ICC", rgb_icc, sizeof(rgb_icc));
     }
 
     /* Process operations. */
@@ -955,10 +956,10 @@ dims_process_image(dims_request_rec *d)
                      strcmp(command, "legacy_thumbnail") == 0 ||
                      strcmp(command, "legacy_crop") == 0 ||
                      strcmp(command, "thumbnail") == 0)) {
-                MagickStatusType flags;
+                int flags;
                 RectangleInfo rec;
 
-                flags = GetGeometry(args, &rec->x, &rec->y, &rec->width, &rec->height);
+                flags = GetGeometry(args, &rec.x, &rec.y, &rec.width, &rec.height);
 
                 if(rec.width > 0 && rec.height == 0) {
                     args = apr_psprintf(d->pool, "%ld", rec.width);
@@ -1022,7 +1023,7 @@ dims_process_image(dims_request_rec *d)
     /* Disable timeouts at this point since the only thing left
      * to do is save the image. 
      */
-    SetMonitorHandler(NULL);
+    //SetMonitorHandler(NULL);
 
     return dims_send_image(d);
 }

@@ -30,10 +30,10 @@
     do { \
         apr_status_t code = func; \
         if(rec->status == DIMS_IMAGEMAGICK_TIMEOUT) {\
-			wand = DestroyMagickWand(wand); \
+			DestroyMagickWand(wand); \
             return DIMS_IMAGEMAGICK_TIMEOUT; \
         } else if(code == MagickFalse) {\
-			wand = DestroyMagickWand(wand); \
+			DestroyMagickWand(wand); \
             return DIMS_FAILURE; \
         } \
     } while(0)
@@ -42,11 +42,11 @@
 /*
 apr_status_t
 dims_smart_crop_operation (dims_request_rec *d, char *args, char **err) {
-    MagickStatusType flags;
+    int flags;
     RectangleInfo rec;
     ExceptionInfo ex_info;
 
-    flags = ParseGravityGeometry(GetImageFromMagickWand(d->wand), args, &rec, &ex_info);
+    flags = ParseGravityGeometry(MagickGetImage(d->wand), args, &rec, &ex_info);
     if(!(flags & AllValues)) {
         *err = "Parsing crop geometry failed";
         return DIMS_FAILURE;
@@ -93,11 +93,11 @@ dims_mirroredfloor_operation (dims_request_rec *d, char *args, char **err) {
 		return DIMS_FAILURE;
 	}
     MAGICK_CHECK_FREE_ON_FAIL(MagickFlipImage(tmp), d, tmp);
-	int width = MagickGetImageWidth(d->wand);
-	int height = MagickGetImageHeight(d->wand);
+	unsigned long width = MagickGetImageWidth(d->wand);
+	unsigned long height = MagickGetImageHeight(d->wand);
 	MAGICK_CHECK_FREE_ON_FAIL(MagickExtentImage(d->wand, width, height * 2, 0, 0), d, tmp);
 	MAGICK_CHECK_FREE_ON_FAIL(MagickCompositeImage(d->wand, tmp, OverCompositeOp, 0, height), d, tmp);
-	tmp = DestroyMagickWand(tmp);
+	DestroyMagickWand(tmp);
 	return DIMS_SUCCESS;
 }
 
@@ -117,10 +117,10 @@ dims_flop_operation (dims_request_rec *d, char *args, char **err) {
  * Not available in GraphicsMagick
 apr_status_t
 dims_adaptive_resize_operation (dims_request_rec *d, char *args, char **err) {
-    MagickStatusType flags;
+    int flags;
     RectangleInfo rec;
 
-	SetGeometry(GetImageFromMagickWand(d->wand), &rec);
+	SetGeometry(MagickGetImage(d->wand), &rec);
     flags = GetMagickGeometry(args, &rec.x, &rec.y, &rec.width, &rec.height);
     if(!(flags & AllValues)) {
         *err = "Parsing thumbnail geometry failed";
@@ -136,10 +136,10 @@ dims_adaptive_resize_operation (dims_request_rec *d, char *args, char **err) {
 /* not available in graphics magick
 apr_status_t
 dims_liquid_resize_operation (dims_request_rec *d, char *args, char **err) {
-    MagickStatusType flags;
+    int flags;
     RectangleInfo rec;
 
-	SetGeometry(GetImageFromMagickWand(d->wand), &rec);
+	SetGeometry(MagickGetImage(d->wand), &rec);
     flags = GetMagickGeometry(args, &rec.x, &rec.y, &rec.width, &rec.height);
     if(!(flags & AllValues)) {
         *err = "Parsing thumbnail geometry failed";
@@ -154,25 +154,25 @@ dims_liquid_resize_operation (dims_request_rec *d, char *args, char **err) {
 
 apr_status_t
 dims_resize_operation (dims_request_rec *d, char *args, char **err) {
-    MagickStatusType flags;
-    RectangleInfo rec;
+    int flags;
+    long x = 0, y = 0;
+    unsigned long width = MagickGetImageWidth(d->wand);
+    unsigned long height = MagickGetImageHeight(d->wand);
 
-	SetGeometry(GetImageFromMagickWand(d->wand), &rec);
-    flags = GetMagickGeometry(args, &rec.x, &rec.y, &rec.width, &rec.height);
+    flags = GetMagickGeometry(args, &x, &y, &width, &height);
     if(!(flags & AllValues)) {
         *err = "Parsing thumbnail geometry failed";
         return DIMS_FAILURE;
     }
 
-    MAGICK_CHECK(MagickResizeImage(d->wand, rec.width, rec.height, SincFilter, 0.9), d);
+    MAGICK_CHECK(MagickResizeImage(d->wand, width, height, SincFilter, 0.9), d);
 
     return DIMS_SUCCESS;
 }
 
 apr_status_t
 dims_sharpen_operation (dims_request_rec *d, char *args, char **err) {
-    MagickStatusType flags;
-    GeometryInfo rec;
+    int flags;
 	double sigma, radius = 0.0;
 
     flags = GetMagickDimension(args, &radius, &sigma, NULL, NULL);
@@ -191,28 +191,32 @@ dims_sharpen_operation (dims_request_rec *d, char *args, char **err) {
 
 apr_status_t
 dims_thumbnail_operation (dims_request_rec *d, char *args, char **err) {
-    MagickStatusType flags;
-    RectangleInfo rec, rec2;
+    int flags;
     char *resize_args = apr_psprintf(d->pool, "%s^", args);
+    long x = 0, x2 = 0;
+    long y = 0, y2 = 0;
+    unsigned long width = MagickGetImageWidth(d->wand);
+    unsigned long width2 = width;
+    unsigned long height = MagickGetImageHeight(d->wand);
+    unsigned long height2 = height;
 
-	SetGeometry(GetImageFromMagickWand(d->wand), &rec);
-    flags = GetMagickGeometry(resize_args, &rec.x, &rec.y, &rec.width, &rec.height);
+    flags = GetMagickGeometry(resize_args, &x, &y, &width, &height);
     if(!(flags & AllValues)) {
         *err = "Parsing thumbnail (resize) geometry failed";
         return DIMS_FAILURE;
     }
 
-    MAGICK_CHECK(MagickThumbnailImage(d->wand, rec.width, rec.height), d);
+    MAGICK_CHECK(MagickResizeImage(d->wand, width, height, BoxFilter, 0.9), d);
 
     if(!(flags & PercentValue)) {
         //flags = ParseAbsoluteGeometry(args, &rec2);
-    	flags = GetMagickGeometry(args, &rec2->x, &rec2->y, &rec2->width, &rec2->height);
+    	flags = GetMagickGeometry(args, &x2, &y2, &width2, &height2);
         if(!(flags & AllValues)) {
             *err = "Parsing thumbnail (crop) geometry failed";
             return DIMS_FAILURE;
         }
 
-        MAGICK_CHECK(MagickCropImage(d->wand, rec2.width, rec2.height, (int)((rec.width - rec2.width) / 2), (int)((rec.height - rec2.height) / 2)), d);
+        MAGICK_CHECK(MagickCropImage(d->wand, width2, height2, (int)((width - width2) / 2), (int)((height - height2) / 2)), d);
     }
     
     return DIMS_SUCCESS;
@@ -220,18 +224,19 @@ dims_thumbnail_operation (dims_request_rec *d, char *args, char **err) {
 
 apr_status_t
 dims_crop_operation (dims_request_rec *d, char *args, char **err) {
-    MagickStatusType flags;
-    RectangleInfo rec;
+    int flags;
+    long x = 0, y = 0;
+    unsigned long width = MagickGetImageWidth(d->wand);
+    unsigned long height = MagickGetImageHeight(d->wand);
     ExceptionInfo ex_info;
 
-	SetGeometry(GetImageFromMagickWand(d->wand), &rec);
-    flags = GetMagickGeometry(args, &rec.x, &rec.y, &rec.width, &rec.height);
+    flags = GetMagickGeometry(args, &x, &y, &width, &height);
     if(!(flags & AllValues)) {
         *err = "Parsing crop geometry failed";
         return DIMS_FAILURE;
     }
 
-    MAGICK_CHECK(MagickCropImage(d->wand, rec.width, rec.height, rec.x, rec.y), d);
+    MAGICK_CHECK(MagickCropImage(d->wand, width, height, x, y), d);
 
     return DIMS_SUCCESS;
 }
@@ -245,17 +250,13 @@ dims_format_operation (dims_request_rec *d, char *args, char **err) {
 apr_status_t
 dims_quality_operation (dims_request_rec *d, char *args, char **err) {
     int quality = apr_strtoi64(args, NULL, 0);
-    int existing_quality = d->wand->image_info->quality;
-
-    if(quality < existing_quality) {
-        MAGICK_CHECK(MagickSetImageCompressionQuality(d->wand, quality), d);
-    }
+    MAGICK_CHECK(MagickSetCompressionQuality(d->wand, quality), d);
     return DIMS_SUCCESS;
 }
 
 apr_status_t
 dims_blur_operation (dims_request_rec *d, char *args, char **err) {
-    MagickStatusType flags;
+    int flags;
 	double radius, sigma;
 
 	flags = GetMagickDimension(args, &radius, &sigma, NULL, NULL);
@@ -281,15 +282,20 @@ dims_brightness_operation (dims_request_rec *d, char *args, char **err) {
 		return DIMS_FAILURE;
 	}
 
-    MAGICK_CHECK(MagickBrightnessContrastImage(d->wand,
-            brightness, contrast), d);
+    //MAGICK_CHECK(MagickBrightnessContrastImage(d->wand,
+    //        brightness, contrast), d);
 
     return DIMS_SUCCESS;
 }
 
 dims_modulate_operation (dims_request_rec *d, char *args, char **err) {
 	// modulate accepts "<brightness>,<saturation>,<hue>"
-    MAGICK_CHECK(ModulateImage(GetImageFromMagickWand(d->wand), args), d);
+    double brightness, sat, hue;
+    int flags = GetMagickDimension(args, &brightness, &sat, &hue, NULL);
+    if (flags < 3) {
+		return DIMS_FAILURE;
+    }
+    MAGICK_CHECK(MagickModulateImage(d->wand, brightness, sat, hue), d);
 
     return DIMS_SUCCESS;
 }
@@ -336,7 +342,7 @@ dims_autolevel_operation (dims_request_rec *d, char *args, char **err) {
 
     if(args != NULL) {
         if(strcmp(args, "true") == 0) {
-            MAGICK_CHECK(MagickAutoLevelImage(d->wand), d);
+            MAGICK_CHECK(MagickEqualizeImage(d->wand), d);
         }
     }
 

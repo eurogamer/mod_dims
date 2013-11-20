@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <time.h>
-#include <wand/MagickWand.h>
+#include <wand/magick_wand.h>
 /*
 #define BENCHMARK(op, block) \
     do { \
