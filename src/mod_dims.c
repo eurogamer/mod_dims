@@ -414,8 +414,8 @@ dims_write_header_cb(void *ptr, size_t size, size_t nmemb, void *data)
  * GraphicsMagick is busy loading up the pixel cache.
  */
 MagickBool 
-dims_graphicsmagick_progress_cb(const char *text, const MagickOffsetType offset,
-                             const MagickSizeType span, void *client_data)
+dims_graphicsmagick_progress_cb(const char *text, const magick_int64_t offset,
+                             const magick_int64_t span, void *client_data)
 {
     dims_progress_rec *p = (dims_progress_rec *) client_data;
 
@@ -861,7 +861,7 @@ dims_cleanup(dims_request_rec *d, char *err_msg, int status)
 static void
 dims_set_optimal_geometry(dims_request_rec *d)
 {
-    MagickStatusType flags;
+    int flags;
     RectangleInfo rec;
     const char *cmds = d->unparsed_commands;
 

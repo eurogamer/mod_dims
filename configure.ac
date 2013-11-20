@@ -4,12 +4,8 @@ AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([src/mod_dims.c])
 
 # For custom installs.
-LDFLAGS+=" -L/usr/local/lib"
-CFLAGS+=" -I/usr/local/include"
-
-# For MacPorts.
-LDFLAGS+=" -L/opt/local/lib"
-CFLAGS+=" -L/opt/local/include"
+LDFLAGS+=" -L/usr/lib"
+CFLAGS+=" -I/usr/include"
 
 # Checks for programs.
 AC_PROG_CC
@@ -21,14 +17,11 @@ AC_ARG_WITH(graphicsmagick, [  --with-graphicsmagick        Specify installation
     LDFLAGS+=" -L$graphicsmagick_dir/lib"
     CFLAGS+=" -I$graphicsmagick_dir/include/GraphicsMagick"
 ],[
-    CFLAGS+=" -I/usr/local/include/GraphicsMagick"
-    CFLAGS+=" -I/opt/local/include/GraphicsMagick"
+    CFLAGS+=" -I/usr/include/GraphicsMagick"
 ])
 AC_SUBST(graphicsmagick_dir)
 
-AC_CHECK_LIB(MagickWand, MagickWandGenesis,, [
-    AC_CHECK_LIB(Wand, MagickWandGenesis,, [AC_MSG_ERROR(GraphicsMagick not found.)])
-])
+AC_CHECK_LIB(GraphicsMagickWand, NewMagickWand,, [AC_MSG_ERROR(GraphicsMagick not found.)])
 AC_CHECK_HEADER(wand/magick_wand.h)
 
 # Check for libcurl
