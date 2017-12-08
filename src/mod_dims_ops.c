@@ -278,7 +278,11 @@ dims_quality_operation (dims_request_rec *d, char *args, char **err) {
     int quality = apr_strtoi64(args, NULL, 0);
     int existing_quality = MagickGetImageCompressionQuality(d->wand);
 
-    if(quality < existing_quality) {
+    // if existing quality is 0, this means undefined, probably because the source was a lossless
+    // format (e.g. PNG)
+    // Not sure about the logic of never using a high quality than the source - what if we're doing
+    // a massive downsample? Leave as is for now though...
+    if(existing_quality == 0 || quality < existing_quality) {
         MAGICK_CHECK(MagickSetImageCompressionQuality(d->wand, quality), d);
     }
     return DIMS_SUCCESS;
